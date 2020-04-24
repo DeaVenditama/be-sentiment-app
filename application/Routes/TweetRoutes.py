@@ -1,4 +1,4 @@
-from flask import request, jsonify
+from flask import request, jsonify, escape
 from flask import current_app as app
 from ..Models.Tweet import db, Tweet
 from ..helper.encoder import AlchemyEncoder
@@ -42,6 +42,24 @@ def selectSingleTweet():
 def sentimentCount():
     hashtag = "#"+request.args.get("hashtag")
     sql = db.text('SELECT classification_result AS label, COUNT(`classification_result`) AS result FROM tweet WHERE search_val="'+hashtag+'" GROUP BY(classification_result)')
+    result = db.engine.execute(sql)
+    result_json = jsonify({'result': [dict(row) for row in result]})
+    return result_json
+
+@cross_origin()
+@app.route('/tweet/toptweet', methods=['GET'])
+def topTweet():
+    hashtag = "#"+request.args.get("hashtag")
+    sql = db.text('SELECT id, user_screen_name, text, retweet_count FROM `tweet` WHERE search_val=\''+hashtag+'\' ORDER BY retweet_count DESC LIMIT 5')
+    result = db.engine.execute(sql)
+    result_json = jsonify({'result': [dict(row) for row in result]})
+    return result_json
+
+@cross_origin()
+@app.route('/tweet/daytoday', methods=['GET'])
+def dayToDay():
+    hashtag = "#"+request.args.get("hashtag")
+    sql = db.text('SELECT DATE_FORMAT(created_at, "%Y %M %d") AS dateLabel, classification_result, COUNT(id) AS countSentiment FROM tweet WHERE search_val=\''+hashtag+'\' GROUP BY DAY(created_at), classification_result LIMIT 30')
     result = db.engine.execute(sql)
     result_json = jsonify({'result': [dict(row) for row in result]})
     return result_json
